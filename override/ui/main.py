@@ -10,8 +10,8 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.textEdit = RobotDataEditor()
-        self.setCentralWidget(self.textEdit)
+        self.editor = RobotDataEditor()
+        self.setCentralWidget(self.editor)
         self.tree = FileSystemTree()
         self.add_dock_widget('Navigator', self.tree, Qt.LeftDockWidgetArea)
         self.tree.clicked.connect(self.click)
@@ -25,12 +25,12 @@ class MainWindow(QMainWindow):
         if self.tree.is_file(index):
             self.current_file = self.tree.path(index)
             content = open(self.current_file, 'r').read()
-            self.textEdit.setDocument(QTextDocument(content))
+            self.editor.set_content(content)
 
     def save(self):
-        if self.textEdit.document().isModified():
+        if self.editor.is_modified:
             print 'saving'
-            self.textEdit.document().setModified(False)
+            self.editor.set_unmodified()
         else:
             print 'clean'
 
@@ -61,7 +61,16 @@ class FileSystemTree(QTreeView):
 
 
 class RobotDataEditor(QTextEdit):
-    pass
+
+    def set_content(self, content):
+        self.setDocument(QTextDocument(content))
+
+    @property
+    def is_modified(self):
+        return self.document().isModified()
+
+    def set_unmodified(self):
+        self.document().setModified(False)
 
 
 
