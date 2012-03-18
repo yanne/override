@@ -14,21 +14,19 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.editor)
         self.tree = FileSystemTree()
         self.add_dock_widget('Navigator', self.tree, Qt.LeftDockWidgetArea)
-        self.tree.clicked.connect(self.click)
+        self.tree.clicked.connect(self.tree_item_selected)
         self.setWindowTitle('OVERRIDE !!')
         self.setMinimumSize(800, 600)
         self._save_timer = self._create_save_timer()
 
-    def click(self, index):
+    def tree_item_selected(self, index):
         if self.tree.is_file(index):
-            self.current_file = self.tree.path(index)
-            content = open(self.current_file, 'r').read()
-            self.editor.set_content(content)
+            self.current_file = File(self.tree.path(index))
+            self.editor.set_content(self.current_file.content)
 
     def save(self):
         if self.editor.is_modified:
-            with open(self.current_file, 'w') as outfile:
-                outfile.write(self.editor.content)
+            self.current_file.save(self.editor.content)
             self.editor.set_unmodified()
 
     def add_dock_widget(self, title, widget, alignment):
@@ -42,6 +40,20 @@ class MainWindow(QMainWindow):
         save_timer.timeout.connect(self.save)
         save_timer.start(1000)
         return save_timer
+
+
+class File(object):
+
+    def __init__(self, path):
+        self._path = path
+
+    @property
+    def content(self):
+        return open(self._path, 'r').read()
+
+    def save(self, new_content):
+        with open(self._path, 'w') as handle:
+            handle.write(new_content)
 
 
 class FileSystemTree(QTreeView):
