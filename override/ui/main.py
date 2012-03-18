@@ -17,9 +17,7 @@ class MainWindow(QMainWindow):
         self.tree.clicked.connect(self.click)
         self.setWindowTitle('OVERRIDE !!')
         self.setMinimumSize(800, 600)
-        self.save_timer = QTimer()
-        self.save_timer.timeout.connect(self.save)
-        self.save_timer.start(1000)
+        self._save_timer = self._create_save_timer()
 
     def click(self, index):
         if self.tree.is_file(index):
@@ -39,6 +37,12 @@ class MainWindow(QMainWindow):
         dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         dock.setWidget(widget)
         self.addDockWidget(alignment, dock)
+
+    def _create_save_timer(self):
+        save_timer = QTimer()
+        save_timer.timeout.connect(self.save)
+        save_timer.start(1000)
+        return save_timer
 
 
 class FileSystemTree(QTreeView):
