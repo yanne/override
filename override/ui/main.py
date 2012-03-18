@@ -27,10 +27,9 @@ class MainWindow(QMainWindow):
 
     def save(self):
         if self.editor.is_modified:
-            print 'saving'
+            with open(self.current_file, 'w') as outfile:
+                outfile.write(self.editor.content)
             self.editor.set_unmodified()
-        else:
-            print 'clean'
 
     def add_dock_widget(self, title, widget, alignment):
         dock = QDockWidget(title, self)
@@ -68,6 +67,10 @@ class RobotDataEditor(QTextEdit):
 
     def set_content(self, content):
         self.setDocument(QTextDocument(content))
+
+    @property
+    def content(self):
+        return self.document().toPlainText()
 
     @property
     def is_modified(self):
