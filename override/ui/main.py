@@ -10,36 +10,47 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.editor = RobotDataEditor()
-        self.setCentralWidget(self.editor)
-        self.tree = FileSystemTree()
-        self.add_dock_widget('Navigator', self.tree, Qt.LeftDockWidgetArea)
-        self.tree.clicked.connect(self.tree_item_selected)
-        self.setWindowTitle('OVERRIDE !!')
-        self.setMinimumSize(800, 600)
+        self._editor = self._create_editor()
+        self._tree = self._create_tree()
+        self._decorate()
         self._save_timer = self._create_save_timer()
 
-    def tree_item_selected(self, index):
-        if self.tree.is_file(index):
-            self.current_file = File(self.tree.path(index))
-            self.editor.set_content(self.current_file.content)
+    def _create_editor(self):
+        editor = RobotDataEditor()
+        self.setCentralWidget(editor)
+        return editor
 
-    def save(self):
-        if self.editor.is_modified:
-            self.current_file.save(self.editor.content)
-            self.editor.set_unmodified()
-
-    def add_dock_widget(self, title, widget, alignment):
-        dock = QDockWidget(title, self)
-        dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        dock.setWidget(widget)
-        self.addDockWidget(alignment, dock)
+    def _create_tree(self):
+        tree = FileSystemTree()
+        self.add_dock_widget('Navigator', tree, Qt.LeftDockWidgetArea)
+        tree.clicked.connect(self.tree_item_selected)
+        return tree
 
     def _create_save_timer(self):
         save_timer = QTimer()
         save_timer.timeout.connect(self.save)
         save_timer.start(1000)
         return save_timer
+
+    def _decorate(self):
+        self.setWindowTitle('OVERRIDE !!')
+        self.setMinimumSize(800, 600)
+
+    def tree_item_selected(self, index):
+        if self._tree.is_file(index):
+            self.current_file = File(self._tree.path(index))
+            self._editor.set_content(self.current_file.content)
+
+    def save(self):
+        if self._editor.is_modified:
+            self.current_file.save(self._editor.content)
+            self._editor.set_unmodified()
+
+    def add_dock_widget(self, title, widget, alignment):
+        dock = QDockWidget(title, self)
+        dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        dock.setWidget(widget)
+        self.addDockWidget(alignment, dock)
 
 
 class File(object):
