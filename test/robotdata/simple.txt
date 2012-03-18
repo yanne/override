@@ -1,0 +1,18 @@
+*** Settings ***
+Resource    resource.txt
+
+*** Variables ***
+${GREETING}    Hello, world!
+
+*** Test Cases ***
+A Test
+    Log    ${GREETING}
+
+Another Test
+    My Keyword
+    Your Keyword
+
+*** Keywords ***
+My Keyword
+    List Files in Directory    ${CURDIR}
+

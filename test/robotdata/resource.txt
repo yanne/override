@@ -1,0 +1,6 @@
+*** settings ***
+Library    OperatingSystem
+
+* keywords *
+Your Keyword
+    List Directories in Directory    ${CURDIR}
