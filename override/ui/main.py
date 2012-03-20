@@ -120,15 +120,21 @@ class RobotDataEditor(QTextEdit):
         return tc.selectedText()
 
     def keyPressEvent(self, event):
-        if event.modifiers() == Qt.ControlModifier and \
-                event.key() == Qt.Key_Space:
-            prefix = self._text_under_cursor()
-            self._completer.setCompletionPrefix(prefix)
-            cr = self.cursorRect()
-            cr.setWidth(self._completer.popup().sizeHintForColumn(0) +
-                    self._completer.popup().verticalScrollBar().sizeHint().width())
-            self._completer.complete(cr)
+        if self._ignorable(event):
+            event.ignore()
+            return
+        if self._requests_completion(event):
+            self._completer.show_completion_for(self._text_under_cursor(),
+                    self.cursorRect())
         QTextEdit.keyPressEvent(self, event)
+
+    def _ignorable(self, event):
+        ignored = (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Escape, Qt.Key_Tab)
+        return self._completer.popup().isVisible() and event.key() in ignored
+
+    def _requests_completion(self, event):
+        modifiers = [Qt.ControlModifier, Qt.ControlModifier | Qt.AltModifier]
+        return event.modifiers() in modifiers and event.key() == Qt.Key_Space
 
     def _completion(self, completion):
         tc = self.textCursor()
@@ -146,10 +152,19 @@ class SettingNameCompleter(QCompleter):
 
     def __init__(self, editor):
         super(SettingNameCompleter, self).__init__(self._setting_names)
-        print self.popup()
         self.setCaseSensitivity(Qt.CaseInsensitive)
         self.setCompletionMode(QCompleter.PopupCompletion)
         self.setWidget(editor)
+
+    def show_completion_for(self, prefix, position):
+        self.setCompletionPrefix(prefix)
+        self._show_completion_in(position)
+
+    def _show_completion_in(self, position):
+        popup = self.popup()
+        position.setWidth(popup.sizeHintForColumn(0) +
+                popup.verticalScrollBar().sizeHint().width())
+        self.complete(position)
 
 
 if __name__ == '__main__':
