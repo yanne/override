@@ -1,8 +1,8 @@
 from __future__ import with_statement
 import sys
 from PySide.QtCore import Qt, QDir, QTimer
-from PySide.QtGui import (QMainWindow, QTextEdit, QTextDocument,
-        QDockWidget, QTreeView, QFileSystemModel, QApplication)
+from PySide.QtGui import (QMainWindow, QTextEdit, QTextDocument, QCompleter,
+        QDockWidget, QTreeView, QFileSystemModel, QApplication, QTextCursor)
 
 
 class MainWindow(QMainWindow):
@@ -95,6 +95,11 @@ class FileSystemTree(QTreeView):
 
 class RobotDataEditor(QTextEdit):
 
+    def __init__(self):
+        super(RobotDataEditor, self).__init__()
+        self._completer = SettingNameCompleter(self)
+        self._completer.activated.connect(self._completion)
+
     def set_content(self, content):
         self.setDocument(QTextDocument(content))
 
@@ -108,6 +113,43 @@ class RobotDataEditor(QTextEdit):
 
     def set_unmodified(self):
         self.document().setModified(False)
+
+    def _text_under_cursor(self):
+        tc = self.textCursor()
+        tc.select(QTextCursor.WordUnderCursor)
+        return tc.selectedText()
+
+    def keyPressEvent(self, event):
+        if event.modifiers() == Qt.ControlModifier and \
+                event.key() == Qt.Key_Space:
+            prefix = self._text_under_cursor()
+            self._completer.setCompletionPrefix(prefix)
+            cr = self.cursorRect()
+            cr.setWidth(self._completer.popup().sizeHintForColumn(0) +
+                    self._completer.popup().verticalScrollBar().sizeHint().width())
+            self._completer.complete(cr)
+        QTextEdit.keyPressEvent(self, event)
+
+    def _completion(self, completion):
+        tc = self.textCursor()
+        extra = len(completion) - len(self._completer.completionPrefix())
+        tc.movePosition(QTextCursor.Left)
+        tc.movePosition(QTextCursor.EndOfWord)
+        tc.insertText(completion[-extra:])
+        self.setTextCursor(tc)
+
+
+class SettingNameCompleter(QCompleter):
+    _setting_names = ['Documentation', 'Force Tags', 'Default Tags',
+            'Suite Setup', 'Suite Teardown', 'Test Setup', 'Test Teardown',
+            'Library', 'Resource', 'Variables', 'Metadata']
+
+    def __init__(self, editor):
+        super(SettingNameCompleter, self).__init__(self._setting_names)
+        print self.popup()
+        self.setCaseSensitivity(Qt.CaseInsensitive)
+        self.setCompletionMode(QCompleter.PopupCompletion)
+        self.setWidget(editor)
 
 
 if __name__ == '__main__':
