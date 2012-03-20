@@ -2,22 +2,31 @@ from __future__ import with_statement
 import sys
 from PySide.QtCore import Qt, QDir, QTimer
 from PySide.QtGui import (QMainWindow, QTextEdit, QTextDocument, QCompleter,
-        QDockWidget, QTreeView, QFileSystemModel, QApplication, QTextCursor)
+        QDockWidget, QTreeView, QFileSystemModel, QApplication, QTextCursor,
+        QTabWidget)
 
 
 class MainWindow(QMainWindow):
 
     def __init__(self):
         super(MainWindow, self).__init__()
-        self._editor = self._create_editor()
+        self._tabs = self.create_tab_widget()
         self._navigator = self._create_navigator()
         self._decorate()
         self._save_timer = self._create_save_timer()
-        self.current_file = None
 
-    def _create_editor(self):
-        editor = RobotDataEditor()
-        self.setCentralWidget(editor)
+    def create_tab_widget(self):
+        tabs = QTabWidget()
+        tabs.setTabsClosable(True)
+        self.setCentralWidget(tabs)
+        tabs.tabCloseRequested.connect(self._close_tab)
+        return tabs
+
+    def _close_tab(self, index):
+        self._tabs.removeTab(index)
+
+    def _create_editor(self, data):
+        editor = RobotDataEditor(data)
         return editor
 
     def _create_navigator(self):
@@ -38,13 +47,16 @@ class MainWindow(QMainWindow):
 
     def tree_item_selected(self, index):
         if self._navigator.is_file(index):
-            self.current_file = File(self._navigator.path(index))
-            self._editor.set_content(self.current_file.content)
+            editor = self._create_editor(File(self._navigator.path(index)))
+            self._tabs.addTab(editor, self._navigator.name(index))
 
     def save(self):
-        if self._editor.is_modified and self.current_file:
-            self.current_file.save(self._editor.content)
-            self._editor.set_unmodified()
+        editor = self._current_editor()
+        if editor and editor.is_modified:
+            editor.save()
+
+    def _current_editor(self):
+        return self._tabs.currentWidget()
 
     def add_dock_widget(self, title, widget, alignment):
         dock = QDockWidget(title, self)
@@ -92,16 +104,18 @@ class FileSystemTree(QTreeView):
     def path(self, index):
         return self._model.filePath(index)
 
+    def name(self, index):
+        return self._model.fileName(index)
+
 
 class RobotDataEditor(QTextEdit):
 
-    def __init__(self):
+    def __init__(self, data):
         super(RobotDataEditor, self).__init__()
         self._completer = SettingNameCompleter(self)
         self._completer.activated.connect(self._completion)
-
-    def set_content(self, content):
-        self.setDocument(QTextDocument(content))
+        self._data = data
+        self.setDocument(QTextDocument(self._data.content))
 
     @property
     def content(self):
@@ -111,7 +125,8 @@ class RobotDataEditor(QTextEdit):
     def is_modified(self):
         return self.document().isModified()
 
-    def set_unmodified(self):
+    def save(self):
+        self._data.save(self.content)
         self.document().setModified(False)
 
     def _text_under_cursor(self):
