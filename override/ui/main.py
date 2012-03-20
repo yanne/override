@@ -1,9 +1,8 @@
 from __future__ import with_statement
+import sys
 from PySide.QtCore import Qt, QDir, QTimer
 from PySide.QtGui import (QMainWindow, QTextEdit, QTextDocument,
         QDockWidget, QTreeView, QFileSystemModel, QApplication)
-import os
-import sys
 
 
 class MainWindow(QMainWindow):
@@ -11,7 +10,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self._editor = self._create_editor()
-        self._tree = self._create_tree()
+        self._navigator = self._create_navigator()
         self._decorate()
         self._save_timer = self._create_save_timer()
 
@@ -20,8 +19,8 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(editor)
         return editor
 
-    def _create_tree(self):
-        tree = FileSystemTree()
+    def _create_navigator(self):
+        tree = FileSystemTree(QDir.currentPath() + '/test')
         self.add_dock_widget('Navigator', tree, Qt.LeftDockWidgetArea)
         tree.clicked.connect(self.tree_item_selected)
         return tree
@@ -37,8 +36,8 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(800, 600)
 
     def tree_item_selected(self, index):
-        if self._tree.is_file(index):
-            self.current_file = File(self._tree.path(index))
+        if self._navigator.is_file(index):
+            self.current_file = File(self._navigator.path(index))
             self._editor.set_content(self.current_file.content)
 
     def save(self):
@@ -69,21 +68,28 @@ class File(object):
 
 class FileSystemTree(QTreeView):
 
-    def __init__(self):
-        QTreeView.__init__(self)
-        self.model = QFileSystemModel()
-        self.model.setRootPath(QDir().currentPath() + '/test')
-        self.setModel(self.model)
-        self.setRootIndex(self.model.index(QDir.currentPath() + '/test'))
+    def __init__(self, root_path):
+        super(FileSystemTree, self).__init__()
+        self._model = self._create_file_system_model(root_path)
+        self._configure_view()
+
+    def _create_file_system_model(self, root_path):
+        model = QFileSystemModel()
+        model.setRootPath(root_path)
+        self.setModel(model)
+        self.setRootIndex(model.index(root_path))
+        return model
+
+    def _configure_view(self):
         for i in 1,2,3:
             self.setColumnHidden(i, True)
         self.setHeaderHidden(True)
 
     def is_file(self, index):
-        return not self.model.isDir(index)
+        return not self._model.isDir(index)
 
     def path(self, index):
-        return self.model.filePath(index)
+        return self._model.filePath(index)
 
 
 class RobotDataEditor(QTextEdit):
