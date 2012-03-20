@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
     def _create_navigator(self):
         tree = FileSystemTree(QDir.currentPath() + '/test')
         self.add_dock_widget('Navigator', tree, Qt.LeftDockWidgetArea)
-        tree.clicked.connect(self.tree_item_selected)
+        tree.activated.connect(self.tree_item_selected)
         return tree
 
     def _create_save_timer(self):
