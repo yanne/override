@@ -13,6 +13,7 @@ class MainWindow(QMainWindow):
         self._navigator = self._create_navigator()
         self._decorate()
         self._save_timer = self._create_save_timer()
+        self.current_file = None
 
     def _create_editor(self):
         editor = RobotDataEditor()
@@ -41,7 +42,7 @@ class MainWindow(QMainWindow):
             self._editor.set_content(self.current_file.content)
 
     def save(self):
-        if self._editor.is_modified:
+        if self._editor.is_modified and self.current_file:
             self.current_file.save(self._editor.content)
             self._editor.set_unmodified()
 
@@ -81,7 +82,7 @@ class FileSystemTree(QTreeView):
         return model
 
     def _configure_view(self):
-        for i in 1,2,3:
+        for i in 1, 2, 3:
             self.setColumnHidden(i, True)
         self.setHeaderHidden(True)
 
@@ -107,7 +108,6 @@ class RobotDataEditor(QTextEdit):
 
     def set_unmodified(self):
         self.document().setModified(False)
-
 
 
 if __name__ == '__main__':
