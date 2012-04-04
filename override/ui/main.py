@@ -3,7 +3,7 @@ import sys
 from PySide.QtCore import Qt, QDir, QTimer
 from PySide.QtGui import (QMainWindow, QTextEdit, QTextDocument, QCompleter,
         QDockWidget, QTreeView, QFileSystemModel, QApplication, QTextCursor,
-        QTabWidget)
+        QTabWidget, QTextCharFormat, QColor, QBrush, QLabel)
 
 
 class MainWindow(QMainWindow):
@@ -116,6 +116,10 @@ class RobotDataEditor(QTextEdit):
         self._completer.activated.connect(self._completion)
         self._data = data
         self.setDocument(QTextDocument(self._data.content))
+        self.setMouseTracking(True)
+        self._mouse_position = None
+        self._link = None
+        self._help = None
 
     @property
     def content(self):
@@ -134,6 +138,9 @@ class RobotDataEditor(QTextEdit):
         tc.select(QTextCursor.WordUnderCursor)
         return tc.selectedText()
 
+    def mouseMoveEvent(self, event):
+        self._mouse_position = event.pos()
+
     def keyPressEvent(self, event):
         if self._ignorable(event):
             event.ignore()
@@ -141,7 +148,15 @@ class RobotDataEditor(QTextEdit):
         if self._requests_completion(event):
             self._completer.show_completion_for(self._text_under_cursor(),
                     self.cursorRect())
+        elif self._requests_info(event):
+            self._show_info()
         QTextEdit.keyPressEvent(self, event)
+
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_Control and self._link:
+            self._link.setCharFormat(QTextCharFormat())
+        if event.key() == Qt.Key_Control and self._help:
+            self._help.hide()
 
     def _ignorable(self, event):
         ignored = (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Escape, Qt.Key_Tab)
@@ -158,6 +173,31 @@ class RobotDataEditor(QTextEdit):
         tc.movePosition(QTextCursor.EndOfWord)
         tc.insertText(completion[-extra:])
         self.setTextCursor(tc)
+
+    def _requests_info(self, event):
+        return event.key() == Qt.Key_Control
+
+    def _show_info(self):
+        self._link = self._create_info_cursor()
+        self._help = self._create_help_display()
+
+    def _create_info_cursor(self):
+        cursor = self.cursorForPosition(self._mouse_position)
+        cursor.select(QTextCursor.WordUnderCursor)
+        format = QTextCharFormat()
+        format.setFontUnderline(True)
+        format.setForeground(QBrush(QColor('blue')))
+        cursor.setCharFormat(format)
+        return cursor
+
+    def _create_help_display(self):
+        label = QLabel(self)
+        label.setText('<b>this is doc</b>'
+            '<table><tr><td>Example:</td><td>value</td></tr></table>')
+        label.setStyleSheet("QLabel {background-color: yellow}")
+        label.move(self._mouse_position)
+        label.show()
+        return label
 
 
 class SettingNameCompleter(QCompleter):
