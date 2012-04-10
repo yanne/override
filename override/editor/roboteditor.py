@@ -1,6 +1,9 @@
+import re
+from robot.variables import is_var
 from PySide.QtCore import Qt
 from PySide.QtGui import (QTextEdit, QTextDocument, QCompleter,
-        QTextCursor, QTextCharFormat, QColor, QBrush, QLabel)
+        QTextCursor, QTextCharFormat, QColor, QBrush, QLabel,
+        QSyntaxHighlighter)
 
 
 class RobotDataEditor(QTextEdit):
@@ -15,6 +18,10 @@ class RobotDataEditor(QTextEdit):
         self._mouse_position = None
         self._link = None
         self._help = None
+
+    @property
+    def path(self):
+        return self._data.path
 
     @property
     def content(self):
@@ -115,3 +122,94 @@ class SettingNameCompleter(QCompleter):
         position.setWidth(popup.sizeHintForColumn(0) +
                 popup.verticalScrollBar().sizeHint().width())
         self.complete(position)
+
+
+def create_table_matcher(name):
+    return re.compile('\*+\W*(%s|%ss)\W*\*+' % (name, name), re.I)
+
+
+class RobotHiglighter(QSyntaxHighlighter):
+    _tables = [create_table_matcher(name) for name in
+            ('setting', 'variable', 'test case', 'keyword')]
+
+    def __init__(self, parent):
+        super(RobotHiglighter, self).__init__(parent)
+        self._current_table = 0
+
+    def highlightBlock(self, text):
+        hl = self._highlighter(text)
+        self.setFormat(hl.start, hl.end, hl.style)
+
+    def _highlighter(self, text):
+        match = self._match_header(text)
+        if match:
+            return Highlighter(match.start(), match.end(), TableHeaderStyle())
+        return {
+            1: SettingRowHighlighter,
+            2: VariableRowHighlighter,
+            }.get(self.current, NoHighlighter)(text)
+
+    def _match_header(self, line):
+        for index, table in enumerate(self._tables):
+            match = table.match(line)
+            if match:
+                self.current = index + 1
+                return match
+
+
+class Highlighter(object):
+
+    def __init__(self, start, end, style):
+        self.start = start
+        self.end = end
+        self.style = style
+
+
+class SettingRowHighlighter(object):
+
+    def __init__(self, text):
+        self.start = 0
+        self.end = text.index(' ') if ' ' in text else 0
+        self.style = SyntaxElementStyle()
+
+
+class VariableRowHighlighter(object):
+
+    def __init__(self, text):
+        self.start, self.end = self._get_veriable_position(text)
+        self.style = VariableNameStyle()
+
+    def _get_veriable_position(self, text):
+        if text:
+            name = text.split()[0]
+            if is_var(name):
+                return 0, len(name)
+        return 0, 0
+
+
+class NoHighlighter(object):
+
+    def __init__(self, text):
+        self.start = 0
+        self.end = 0
+        self.style = None
+
+
+class SyntaxElementStyle(QTextCharFormat):
+
+    def __init__(self):
+        super(SyntaxElementStyle, self).__init__()
+        self.setForeground(Qt.darkCyan)
+
+
+class TableHeaderStyle(QTextCharFormat):
+
+    def __init__(self):
+        super(TableHeaderStyle, self).__init__()
+        self.setForeground(Qt.darkMagenta)
+
+
+class VariableNameStyle(QTextCharFormat):
+    def __init__(self):
+        super(VariableNameStyle, self).__init__()
+        self.setForeground(Qt.darkYellow)
