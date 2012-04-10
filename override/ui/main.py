@@ -3,7 +3,7 @@ import sys
 from PySide.QtCore import Qt, QDir, QTimer
 from PySide.QtGui import QMainWindow, QDockWidget, QApplication, QTabWidget
 
-from override.editor import RobotDataEditor
+from override.editor import Editor
 
 from navigator import Navigator
 
@@ -11,14 +11,14 @@ from navigator import Navigator
 class File(object):
 
     def __init__(self, path):
-        self._path = path
+        self.path = path
 
     @property
     def content(self):
-        return open(self._path, 'r').read()
+        return open(self.path, 'r').read()
 
     def save(self, new_content):
-        with open(self._path, 'w') as handle:
+        with open(self.path, 'w') as handle:
             handle.write(new_content)
 
 
@@ -29,21 +29,14 @@ class MainWindow(QMainWindow):
         self._tabs = self.create_tab_widget()
         self._navigator = self._create_navigator()
         self._decorate()
-        self._save_timer = self._create_save_timer()
+        self._create_save_timer()
+        self._open_files = []
 
     def create_tab_widget(self):
-        tabs = QTabWidget()
-        tabs.setTabsClosable(True)
+        tabs = EditorTabs()
         self.setCentralWidget(tabs)
         tabs.tabCloseRequested.connect(self._close_tab)
         return tabs
-
-    def _close_tab(self, index):
-        self._tabs.removeTab(index)
-
-    def _create_editor(self, data):
-        editor = RobotDataEditor(data)
-        return editor
 
     def _create_navigator(self):
         tree = Navigator(QDir.currentPath() + '/test')
@@ -51,20 +44,28 @@ class MainWindow(QMainWindow):
         tree.activated.connect(self.tree_item_selected)
         return tree
 
-    def _create_save_timer(self):
-        save_timer = QTimer()
-        save_timer.timeout.connect(self.save)
-        save_timer.start(1000)
-        return save_timer
-
     def _decorate(self):
         self.setWindowTitle('OVERRIDE !!')
         self.setMinimumSize(800, 600)
 
+    def _create_save_timer(self):
+        save_timer = QTimer(self)
+        save_timer.timeout.connect(self.save)
+        save_timer.start(1000)
+
     def tree_item_selected(self, index):
-        if self._navigator.is_file(index):
-            editor = self._create_editor(File(self._navigator.path(index)))
-            self._tabs.addTab(editor, self._navigator.name(index))
+        path = self._navigator.path(index)
+        if path not in self._open_files and self._navigator.is_file(index):
+            self._open_files.append(path)
+            editor = self._create_editor(File(path))
+            self._tabs.add(editor, self._navigator.name(index))
+
+    def _close_tab(self, index):
+        self._open_files.remove(self._tabs.current.path)
+        self._tabs.close(index)
+
+    def _create_editor(self, data):
+        return Editor(data)
 
     def save(self):
         editor = self._current_editor()
@@ -72,13 +73,30 @@ class MainWindow(QMainWindow):
             editor.save()
 
     def _current_editor(self):
-        return self._tabs.currentWidget()
+        return self._tabs.current
 
     def add_dock_widget(self, title, widget, alignment):
         dock = QDockWidget(title, self)
         dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         dock.setWidget(widget)
         self.addDockWidget(alignment, dock)
+
+
+class EditorTabs(QTabWidget):
+
+    def __init__(self):
+        super(EditorTabs, self).__init__()
+        self.setTabsClosable(True)
+
+    def close(self, index):
+        self.removeTab(index)
+
+    def add(self, component, title):
+        self.addTab(component, title)
+
+    @property
+    def current(self):
+        return self.currentWidget()
 
 
 if __name__ == '__main__':
