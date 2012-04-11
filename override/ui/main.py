@@ -61,7 +61,7 @@ class MainWindow(QMainWindow):
             self._tabs.add(editor, self._navigator.name(index))
 
     def _close_tab(self, index):
-        self._open_files.remove(self._tabs.current.path)
+        self._open_files.remove(self._tabs.widget(index).path)
         self._tabs.close(index)
 
     def _create_editor(self, data):
